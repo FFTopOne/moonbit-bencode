@@ -277,6 +277,44 @@ test "deep nesting is supported" {
   assert_eq(@moonbit-bencode.encode(value), data)
 }
 
+///|
+test "nesting depth limit accepts the boundary" {
+  let limit = @moonbit-bencode.max_nesting_depth()
+  let data = b"l".repeat(limit) + b"i1e" + b"e".repeat(limit)
+  let value = must_decode(data)
+  assert_eq(@moonbit-bencode.encode(value), data)
+}
+
+///|
+test "adversarial nesting is rejected, not crashed on" {
+  // Without a depth limit this payload would exhaust the stack and take the
+  // whole process down; it must surface as a normal decode error instead.
+  let deep = b"l".repeat(10_000)
+  expect_error(deep, fn(e) raise { assert_true(e is NestingTooDeep(512)) })
+  let deep_dict = b"d1:a".repeat(10_000)
+  expect_error(deep_dict, fn(e) raise { assert_true(e is NestingTooDeep(_)) })
+  // Balanced but too deep: still a normal error.
+  let balanced = b"l".repeat(513) + b"i1e" + b"e".repeat(513)
+  expect_error(balanced, fn(e) raise { assert_true(e is NestingTooDeep(_)) })
+}
+
+///|
+test "arbitrary bytes never panic" {
+  // Deterministic pseudo-random inputs must always end in either a value or
+  // a `DecodeError` — never an abort, never a stack overflow.
+  let mut state : UInt64 = 0x9E3779B97F4A7C15
+  for _ in 0..<800 {
+    let s1 = next_random(state)
+    let len = (s1 % 65).to_int()
+    let (bytes, s2) = random_bytes(s1, len)
+    state = s2
+    let result = Some(@moonbit-bencode.decode(bytes)) catch { _ => None }
+    // The only thing asserted here is that we reached this line at all; a
+    // panic in the decoder would abort the test run instead.
+    let _ = result
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 4. StreamDecoder
 // ---------------------------------------------------------------------------
@@ -496,6 +534,10 @@ test "every decode error renders with its offset" {
       b"i99999999999999999999999e", "integer at byte 1 overflows the signed 64-bit range",
     ),
     (b"di1e1:ae", "dictionary key at byte 1 is not a byte string"),
+    (
+      b"l".repeat(513) + b"e".repeat(513),
+      "containers nest deeper than 512 levels at byte 512",
+    ),
     (b"i1ei2e", "3 trailing byte(s) after the top-level value"),
   ]
   for (input, expected) in cases {

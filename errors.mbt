@@ -17,6 +17,8 @@ pub suberror DecodeError {
   IntegerOverflow(Int32)
   /// The dictionary key at `pos` is not a byte string.
   InvalidDictKey(Int32)
+  /// Containers nest deeper than the supported limit at byte `pos`.
+  NestingTooDeep(Int32)
   /// `count` trailing bytes follow the first complete top-level value.
   TrailingData(Int32)
 }
@@ -34,6 +36,8 @@ pub impl Show for DecodeError with fn output(self, logger) {
         "integer at byte \{pos} overflows the signed 64-bit range"
       InvalidDictKey(pos) =>
         "dictionary key at byte \{pos} is not a byte string"
+      NestingTooDeep(pos) =>
+        "containers nest deeper than \{max_nesting_depth()} levels at byte \{pos}"
       TrailingData(count) =>
         "\{count} trailing byte(s) after the top-level value"
     },

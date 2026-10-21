@@ -13,6 +13,8 @@ pub fn encode(Value) -> Bytes
 
 pub fn encode_into(@buffer.Buffer, Value) -> Unit
 
+pub fn max_nesting_depth() -> Int32
+
 // Errors
 pub suberror DecodeError {
   UnexpectedEnd(Int32)
@@ -21,6 +23,7 @@ pub suberror DecodeError {
   InvalidLength(Int32)
   IntegerOverflow(Int32)
   InvalidDictKey(Int32)
+  NestingTooDeep(Int32)
   TrailingData(Int32)
 }
 pub fn DecodeError::output(Self, &Logger) -> Unit

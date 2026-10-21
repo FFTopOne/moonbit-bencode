@@ -30,7 +30,7 @@
 /// boundary is not known in advance.
 pub fn decode(data : Bytes) -> Value raise DecodeError {
   guard !data.is_empty() else { raise UnexpectedEnd(0) }
-  let cursor = Cursor::{ view: data[:], pos: 0, }
+  let cursor = Cursor::{ view: data[:], pos: 0, depth: 0, }
   let value = cursor.decode_value()
   guard cursor.pos == data.length() else {
     raise TrailingData(data.length() - cursor.pos)
@@ -52,7 +52,7 @@ pub fn encode(value : Value) -> Bytes {
 /// Returns `None` when the view ends in the middle of a value, which lets
 /// streaming callers ask for more input. Malformed data still raises.
 fn decode_stream_value(view : BytesView) -> (Value, Int32)? raise DecodeError {
-  let cursor = Cursor::{ view, pos: 0, }
+  let cursor = Cursor::{ view, pos: 0, depth: 0, }
   let value : Value? = Some(cursor.decode_value()) catch {
     UnexpectedEnd(_) => None
     e => raise e

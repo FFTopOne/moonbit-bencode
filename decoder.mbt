@@ -16,10 +16,30 @@ const UINT64_MIN_MAGNITUDE : UInt64 = 9223372036854775808UL
 const MAX_STRING_LENGTH : Int64 = 2147483647L
 
 ///|
+/// Maximum container nesting depth.
+///
+/// Decoding is recursive, so an adversarial payload such as
+/// `l` repeated a million times would otherwise exhaust the stack and take
+/// the process down without a catchable error. Real payloads nest a handful
+/// of levels at most; 512 is far above anything legitimate while keeping the
+/// recursion safely bounded.
+const MAX_NESTING_DEPTH : Int32 = 512
+
+///|
+/// Maximum container nesting depth the decoder accepts.
+///
+/// Payloads nested deeper are rejected with `NestingTooDeep` instead of
+/// risking a stack overflow.
+pub fn max_nesting_depth() -> Int32 {
+  MAX_NESTING_DEPTH
+}
+
+///|
 /// A read cursor over a byte view. All positions are 0-based byte offsets.
 priv struct Cursor {
   view : BytesView
   mut pos : Int32
+  mut depth : Int32
 }
 
 ///|
@@ -158,6 +178,9 @@ fn Cursor::decode_str_body(self : Cursor) -> Value raise DecodeError {
 ///|
 /// Decode `l<items>e`. The leading `l` has already been consumed.
 fn Cursor::decode_list_body(self : Cursor) -> Value raise DecodeError {
+  let open_pos = self.pos - 1
+  self.depth += 1
+  guard self.depth <= MAX_NESTING_DEPTH else { raise NestingTooDeep(open_pos) }
   let items : Array[Value] = []
   while true {
     match self.peek() {
@@ -169,6 +192,7 @@ fn Cursor::decode_list_body(self : Cursor) -> Value raise DecodeError {
       _ => items.push(self.decode_value())
     }
   }
+  self.depth -= 1
   List(items)
 }
 
@@ -178,6 +202,9 @@ fn Cursor::decode_list_body(self : Cursor) -> Value raise DecodeError {
 /// Key order is *not* enforced: real-world payloads are occasionally
 /// non-canonical, and the encoder always re-emits keys in sorted order.
 fn Cursor::decode_dict_body(self : Cursor) -> Value raise DecodeError {
+  let open_pos = self.pos - 1
+  self.depth += 1
+  guard self.depth <= MAX_NESTING_DEPTH else { raise NestingTooDeep(open_pos) }
   let pairs : Array[(Bytes, Value)] = []
   while true {
     match self.peek() {
@@ -197,6 +224,7 @@ fn Cursor::decode_dict_body(self : Cursor) -> Value raise DecodeError {
       }
     }
   }
+  self.depth -= 1
   Dict(Map::Map(pairs[:]))
 }
 
