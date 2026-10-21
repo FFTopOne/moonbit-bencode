@@ -2,3 +2,7 @@ import {
   "moonbitlang/x/fs",
   "FFTopOne/moonbit-bencode" @lib,
 }
+
+import {
+  "moonbitlang/x/fs",
+} for "test"

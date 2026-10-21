@@ -1,7 +1,7 @@
 import {
   "moonbitlang/core/env",
   "moonbitlang/x/sys",
-  "FFTopOne/moonbit-bencode/cli" @cli,
+  "FFTopOne/moonbit-bencode/cli",
 }
 
 pkgtype(kind: "executable")
