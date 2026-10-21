@@ -79,6 +79,57 @@ test {
 }
 ```
 
+### Real-world streaming: Krpc (BEP 5)
+
+The DHT speaks *Krpc*: bencoded messages sent back to back over one socket,
+with no length prefix and no delimiter. A message therefore has to be
+recognised by parsing it, which is exactly what `StreamDecoder` does — it
+reports `None` until a value is complete and then hands back one message at a
+time.
+
+```mbt check
+///|
+test {
+  // A get_peers query, as a node would send it.
+  let query = @moonbit-bencode.Value::dict_of([
+    (b"t", @moonbit-bencode.Value::str(b"aa")),
+    (b"y", @moonbit-bencode.Value::str(b"q")),
+    (b"q", @moonbit-bencode.Value::str(b"get_peers")),
+    (
+      b"a",
+      @moonbit-bencode.Value::dict_of([
+        (b"id", @moonbit-bencode.Value::str(b"abcdefghij0123456789")),
+        (b"info_hash", @moonbit-bencode.Value::str(b"mnopqrstuvwxyz123456")),
+      ]),
+    ),
+  ])
+  let wire = @moonbit-bencode.encode(query)
+  // The socket delivers it in fragments: the first slice is still incomplete,
+  // so try_next returns None and the decoder keeps the bytes buffered.
+  let dec = @moonbit-bencode.StreamDecoder::StreamDecoder()
+  dec.feed(wire[:20])
+  assert_true(dec.try_next() is None)
+  assert_true(dec.pending() > 0)
+  dec.feed(wire[20:])
+  let message = dec.try_next().unwrap()
+  assert_eq(message.get_path([b"y"]).unwrap().as_str().unwrap(), b"q")
+  assert_eq(message.get_path([b"q"]).unwrap().as_str().unwrap(), b"get_peers")
+  // The 20-byte info hash is binary: never treat it as text.
+  let info_hash = message
+    .get_path([b"a", b"info_hash"])
+    .unwrap()
+    .as_str()
+    .unwrap()
+  assert_eq(info_hash.length(), 20)
+  assert_eq(dec.pending(), 0)
+}
+```
+
+The same decoder handles several messages arriving in one datagram: call
+`try_next` until it returns `None` again, then wait for the next packet.
+`pending()` tells you whether the buffer is empty — at a clean message
+boundary it is zero.
+
 Errors carry the offending byte offset:
 
 ```mbt check
