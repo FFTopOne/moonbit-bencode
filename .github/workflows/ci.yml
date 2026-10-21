@@ -23,6 +23,9 @@ jobs:
           moon version
           moonc -v
 
+      - name: Update the package registry
+        run: moon update
+
       - name: Check formatting
         run: moon fmt --check
 
