@@ -1,78 +1,64 @@
-# 一页项目说明：moonbit-bencode
+# moonbit-bencode 项目申报书
 
-## 项目是什么
+## 1. 项目名称
 
-`moonbit-bencode` 是一个符合 [BEP 3 规范](https://www.bittorrent.org/beps/bep_0003.html)的
-bencode 编解码库。bencode 是 BitTorrent 生态的基础编码：`.torrent` 文件、Tracker 通信和
-DHT 协议都使用它。MoonBit 生态中此前没有任何 bencode 实现，本项目填补这一空白。
+moonbit-bencode —— MoonBit 的 Bencode（BEP 3）编解码库
 
-- **主要实现语言**：MoonBit（仅依赖 `moonbitlang/core`）
-- **项目类型**：原创开源库（非移植），**十月赛新项目**（非社区维护项目）
-- **参赛路径**：月度新项目——从零起步，Git 历史自初始提交起完整可查
-- **许可证**：Apache-2.0
+## 2. 项目简介
 
-## 解决的真实问题
+bencode 是 BitTorrent 生态的基础编码：`.torrent` 种子文件、Tracker 通信与 DHT 协议都用它。
+MoonBit 官方注册表（mooncakes.io）与 moonbitlang 官方仓库中目前没有任何 bencode 实现
+（2026-10-21 核查），用 MoonBit 写 BitTorrent 工具只能手写解析器；而 bencode 规则苛刻（整数
+禁止前导零、字典键须按原始字节序、字符串按字节计长且不保证 UTF-8），手写极易出错。本项目
+从零实现一个可直接依赖的编解码库：严格解码（错误带字节偏移）、规范编码、增量流式解码，
+配套 CLI 与 55 个自动化测试。
 
-任何用 MoonBit 编写 BitTorrent 相关工具（种子解析、Tracker、DHT 客户端、自制下载器）的
-开发者，都需要一个可靠的数据层。bencode 规则苛刻：整数不允许前导零、字典键必须按原始
-字节序排列、字符串按字节计长且不保证是 UTF-8。手写解析器容易在这些细节上出错，而错误
-的数据层会让上层工具难以调试。本库把规范细节收敛到一处，并提供带字节偏移的错误定位。
+## 3. 项目方向与通用性说明
 
-## 与现有生态的关系（原创性说明）
+**方向：工具库**（协议库与可复用基础组件），兼有数据处理（二进制格式解析）属性。
 
-申报时已核查（2026-10-21）：MoonBit 官方注册表（mooncakes.io）中**没有任何 bencode
-实现**，官方组织（moonbitlang）下也无相关仓库。本项目为原创工作，不是任何现有项目的
-分支、移植或扩展。与相邻格式及项目的关系如下——它们均不能替代 bencode：
+- 不绑定 BitTorrent 业务，是纯编解码层，任何需要紧凑二进制序列化的 MoonBit 程序都可依赖；
+- 纯 MoonBit 实现，仅依赖 `moonbitlang/core`，支持 wasm / wasm-gc / js / native 多后端；
+- 与传输层解耦：一次性 `decode` 面向文件，`StreamDecoder` 面向无长度前缀的字节流；
+- 字节串以 `Bytes` 处理（二进制安全），可承载哈希、片段等任意载荷。
 
-- **与 JSON / JSON5**（`moonbitlang/core` 内置 JSON、`moonbitlang/x/json5`）：JSON 是
-  文本格式，而 `.torrent` 文件按 BEP 3 规定必须使用 bencode，Tracker 与 DHT 流量同样
-  只识别 bencode；且 bencode 的字典键排序、二进制安全等规则与 JSON 不同，无法互换。
-- **与 CBOR**（`mizchi/cbor`）：CBOR（RFC 8949）是另一种二进制格式，但 BitTorrent 生态
-  不识别 CBOR；两者服务不同协议，互不覆盖。
-- **与 BitTorrent 客户端库**（`Novanke/swarmcrate`）：该类项目位于协议层，本库位于数据
-  层，是互补关系——客户端若要做种子解析，正需要这样一个编解码器作为依赖。
+## 4. 预期使用场景
 
-## 功能清单（均已实现并通过测试）
+1. **种子文件解析**：读取 `.torrent` 的 `announce`、`info.length`、`info.pieces` 等字段，做元
+   信息校验、体积统计或转磁力链接；`canon` 子命令可把非规范种子重写为规范形式。
+2. **DHT / Krpc 节点**：UDP 上多条 bencode 消息首尾相接且无长度前缀，用 `StreamDecoder` 分块
+   喂入，消息完整即产出，`pending()` 判断是否处于消息边界。
+3. **Tracker 客户端**：解析 announce 响应（`interval`、`complete`、`peers` 紧凑列表），peer 的
+   4 字节 IPv4 + 2 字节端口保持二进制，无需先转字符串。
 
-1. **严格解码器**：拒绝 `i03e`、`i-0e`、`i-e`、`05:` 等非规范输入；截断载荷、字典非
-   字符串键、拖尾字节均有对应错误；每个错误携带字节偏移。
-2. **规范编码器**：整数取最短形式，字典键按原始字节序输出——解码后重新编码可与规范
-   载荷逐字节一致（已用真实 `.torrent` 样例验证）。
-3. **完整的 64 位整数**：范围 `-2^63 ..= 2^63-1`，溢出即报错（量级以 UInt64 折叠，
-   保证 `Int64` 最小值可精确表示）。
-4. **二进制安全**：字节串以 `Bytes` 存储，不假设 UTF-8。
-5. **流式解码器**：`StreamDecoder` 支持分块输入，值一旦完整立即产出；内部缓冲区超
-   4096 字节自动压缩，可无限长流。
-6. **对抗性输入防护**：容器嵌套上限 512 层，`llll…` 之类的恶意载荷返回
-   `NestingTooDeep` 错误，而不是栈溢出打崩进程（实测 20 万层载荷仍能优雅报错）。
-7. **命令行工具**：`decode` / `check` / `canon` / `roundtrip` 四个子命令。
+## 5. 拟实现的核心功能（首期已全部实现并通过测试）
 
-## 技术方案
+- **严格解码**：拒绝 `i03e`、`i-0e`、`05:` 等非规范输入；截断载荷、非字符串键、拖尾字节均有
+  对应错误且带字节偏移；整数覆盖 −2^63 ..= 2^63−1，溢出即报错；
+- **规范编码**：整数取最短形式，字典键按原始字节序排序，解码→编码可逐字节复现规范载荷；
+- **增量流式解码**：分块输入，值完整即产出，缓冲区超 4096 字节自动压缩；
+- **对抗输入防护**：容器嵌套上限 512 层，恶意 `llll…` 载荷返回 `NestingTooDeep` 而非栈溢出；
+- **值访问 API**：`as_int` / `as_str` / `as_list` / `as_dict`、`get`、`get_path` 嵌套查找；
+- **CLI**：`decode` / `check` / `canon` / `roundtrip` 四个子命令。
 
-- 递归下降解析，游标（Cursor）直接作用于 `BytesView`，字节串零拷贝切片后按需持有。
-- `Value` 枚举一一映射 bencode 的四种类型；字典用 `LinkedHashMap`，保留首次插入顺序，
-   重复键后者覆盖。
-- 错误处理使用 MoonBit 的 `suberror` + `raise` 机制，调用方零成本传播。
-- `Show` / `Debug` 渲染让二进制载荷在日志和测试快照中可读。
+## 6. 项目类型
 
-## 质量保障
+**原创项目（非移植），且为十月赛新项目（非社区维护项目）**：从零用 MoonBit 编写，Git 历史自
+初始提交起完整可查，未复制任何现有实现代码。与相邻格式不重叠——JSON / JSON5 为文本格式，
+CBOR 服务不同协议，而 BitTorrent 生态只识别 bencode。bencode 编解码功能在 Python / Rust / Go
+生态已有实现，本项目以 **BEP 3 规范文本**为准，仅对照其行为做交叉验证，无代码引用。
 
-- **55 个测试全部通过**（`moon test`，含 5 个 README 文档测试）：BEP 3 规范向量、规范
-  往返、畸形输入逐项断言、流式解码（含逐字节喂入与压缩路径）、xorshift 确定性属性测试
-  （300 组随机值往返）、嵌套深度边界与对抗性载荷、800 组随机字节的“不 panic”测试、
-  渲染与相等性边界。
-- README 中的 5 个示例由 doctest 真实执行（含一句可运行的 Krpc/BEP 5 流式解码示例）。
-- **GitHub Actions CI**：每次推送自动执行 `moon fmt --check`、`moon check --deny-warn`、
-  全部测试与文档测试，绿色徽章可一键复核。
-- `moon check` 零警告；`moon fmt` / `moon info` 规范提交。
-- 开发记录：语义化提交贯穿骨架、核心类型、解码器、编码器、测试、CLI、文档与 CI；
-  需求与后续计划以 GitHub Issue 记录（含 CI 校验的 PR 合并），过程可逐条追踪。
+## 7. 移植说明
 
-## 交付计划
+本项目非移植项目，本项不适用。为便于评审核查，仍列出规范来源：BEP 3
+（https://www.bittorrent.org/beps/bep_0003.html）、BEP 5
+（https://www.bittorrent.org/beps/bep_0005.html）。项目采用 Apache-2.0 许可证。
 
-项目已按报名要求完成首期交付（解码、编码、流式、CLI、测试、文档）。后续计划：发布到
-mooncakes.io 注册表；补充 BEP 3 之外的 Tracker 协议辅助类型； benchmark 套件。
+## 8. GitHub 仓库
 
-## 团队
+https://github.com/FFTopOne/moonbit-bencode （公开，默认分支 `main`，Apache-2.0）
 
-个人参赛（队长 1 人，无队友）。GitHub ID：FFTopOne
+- **有效提交 19 个**（要求 ≥10），无空提交、无重复提交、无无意义拆分；每个提交是一次独立可
+  验证的改动：骨架 → 类型 → 解码器 → 编码器 → 测试 → CLI → 文档 → 嵌套防护 → CI → DHT 示例。
+- 另有 5 个 Issue（4 开放、1 关闭）与 1 个已合并 PR（经 CI 校验），协作记录可追溯。
+- GitHub Actions 每次推送执行格式检查、零警告类型检查、55 个测试与文档测试，当前全绿。
