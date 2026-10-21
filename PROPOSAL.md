@@ -43,7 +43,9 @@ DHT 协议都使用它。MoonBit 生态中此前没有任何 bencode 实现，�
 4. **二进制安全**：字节串以 `Bytes` 存储，不假设 UTF-8。
 5. **流式解码器**：`StreamDecoder` 支持分块输入，值一旦完整立即产出；内部缓冲区超
    4096 字节自动压缩，可无限长流。
-6. **命令行工具**：`decode` / `check` / `canon` / `roundtrip` 四个子命令。
+6. **对抗性输入防护**：容器嵌套上限 512 层，`llll…` 之类的恶意载荷返回
+   `NestingTooDeep` 错误，而不是栈溢出打崩进程（实测 20 万层载荷仍能优雅报错）。
+7. **命令行工具**：`decode` / `check` / `canon` / `roundtrip` 四个子命令。
 
 ## 技术方案
 
@@ -55,12 +57,15 @@ DHT 协议都使用它。MoonBit 生态中此前没有任何 bencode 实现，�
 
 ## 质量保障
 
-- **46 个测试全部通过**（`moon test`）：BEP 3 规范向量、规范往返、畸形输入逐项断言、
+- **49 个测试全部通过**（`moon test`）：BEP 3 规范向量、规范往返、畸形输入逐项断言、
    流式解码（含逐字节喂入与压缩路径）、xorshift 确定性属性测试（300 组随机值往返）、
-   渲染与相等性边界。
-- README 中的示例由 `moon test` 作为 doctest 真实执行。
+   嵌套深度边界与对抗性载荷、800 组随机字节的“不 panic”测试、渲染与相等性边界。
+- README 中的 4 个示例由 `moon test README.mbt.md` 作为 doctest 真实执行。
+- **GitHub Actions CI**：每次推送自动执行 `moon fmt --check`、`moon check --deny-warn`、
+  全部测试与文档测试，绿色徽章可一键复核。
 - `moon check` 零警告；`moon fmt` / `moon info` 规范提交。
-- 开发记录：10 个语义化提交，从骨架到测试逐步可追踪。
+- 开发记录：语义化提交贯穿骨架、核心类型、解码器、编码器、测试、CLI、文档与 CI，
+  过程可逐条追踪。
 
 ## 交付计划
 

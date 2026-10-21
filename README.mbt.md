@@ -1,5 +1,7 @@
 # moonbit-bencode
 
+[![CI](https://github.com/FFTopOne/moonbit-bencode/actions/workflows/ci.yml/badge.svg)](https://github.com/FFTopOne/moonbit-bencode/actions/workflows/ci.yml)
+
 A spec-complete [bencode](https://www.bittorrent.org/beps/bep_0003.html) codec
 for [MoonBit](https://www.moonbitlang.com) — the encoding behind BitTorrent
 `.torrent` files, tracker traffic and the DHT protocol.
@@ -20,6 +22,10 @@ The library depends on nothing but `moonbitlang/core`.
   what network protocols need.
 - **Full 64-bit integers.** Bencoded integers are decoded into `Int64` with
   overflow detection (`-2^63 ..= 2^63-1`).
+- **Hardened against hostile input.** Container nesting is capped at 512
+  levels, so an adversarial `llll...` payload yields `NestingTooDeep` instead
+  of a stack overflow; fuzz-style tests assert that arbitrary bytes always end
+  in a value or a `DecodeError`, never an abort.
 
 ## Usage
 
@@ -114,10 +120,19 @@ moon run cmd/main --target native -- roundtrip file.torrent
 ## Development
 
 ```sh
-moon test          # 38 tests: spec vectors, malformed input, streams, property
-moon test --md     # run the examples in this README
+moon test             # 49 tests: spec vectors, malformed input, streams, property
+moon test README.mbt.md  # run the examples in this README (4 doctests)
 moon fmt && moon info
 ```
+
+## References
+
+- [BEP 3: The BitTorrent Protocol Specification](https://www.bittorrent.org/beps/bep_0003.html)
+  — the bencode grammar, canonical rules and the metainfo structure.
+- [BEP 5: DHT Protocol](https://www.bittorrent.org/beps/bep_0005.html)
+  — stream-oriented peer messages, the streaming use case.
+- Implementations consulted for behaviour (not code): `bencode` for Python,
+  `serde_bencode` for Rust, `bencode-go`.
 
 ## License
 
