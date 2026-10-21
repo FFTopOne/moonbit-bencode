@@ -1,0 +1,69 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "your-github-id/moonbit-bencode"
+
+import {
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn decode(Bytes) -> Value raise DecodeError
+
+pub fn encode(Value) -> Bytes
+
+pub fn encode_into(@buffer.Buffer, Value) -> Unit
+
+// Errors
+pub suberror DecodeError {
+  UnexpectedEnd(Int32)
+  UnexpectedByte(Byte, Int32)
+  InvalidInteger(Int32)
+  InvalidLength(Int32)
+  IntegerOverflow(Int32)
+  InvalidDictKey(Int32)
+  TrailingData(Int32)
+}
+pub fn DecodeError::output(Self, &Logger) -> Unit
+pub fn DecodeError::to_string(Self) -> String
+pub impl Show for DecodeError
+
+// Types and methods
+pub struct StreamDecoder {
+  mut buf : @buffer.Buffer
+  mut consumed : Int32
+}
+pub fn StreamDecoder::StreamDecoder() -> Self
+pub fn StreamDecoder::clear(Self) -> Unit
+pub fn StreamDecoder::feed(Self, BytesView) -> Unit
+pub fn StreamDecoder::pending(Self) -> Int32
+pub fn StreamDecoder::try_next(Self) -> Value? raise DecodeError
+
+pub enum Value {
+  Int(Int64)
+  Str(Bytes)
+  List(Array[Value])
+  Dict(Map[Bytes, Value])
+}
+pub fn Value::as_dict(Self) -> Map[Bytes, Self]?
+pub fn Value::as_int(Self) -> Int64?
+pub fn Value::as_list(Self) -> Array[Self]?
+pub fn Value::as_str(Self) -> Bytes?
+pub fn Value::dict() -> Self
+pub fn Value::dict_of(Array[(Bytes, Self)]) -> Self
+pub fn Value::equal(Self, Self) -> Bool
+pub fn Value::get(Self, Bytes) -> Self?
+pub fn Value::get_path(Self, Array[Bytes]) -> Self?
+pub fn Value::int(Int64) -> Self
+pub fn Value::list(Array[Self]) -> Self
+pub fn Value::not_equal(Self, Self) -> Bool
+pub fn Value::output(Self, &Logger) -> Unit
+pub fn Value::str(Bytes) -> Self
+pub fn Value::to_repr(Self) -> @debug.Repr
+pub fn Value::to_string(Self) -> String
+pub impl Eq for Value
+pub impl Show for Value
+pub impl @debug.Debug for Value
+
+// Type aliases
+
+// Traits
