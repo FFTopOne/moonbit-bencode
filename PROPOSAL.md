@@ -54,4 +54,4 @@ mooncakes.io 注册表；补充 BEP 3 之外的 Tracker 协议辅助类型； be
 
 ## 团队
 
-个人参赛（队长 1 人，无队友）。GitHub ID：<填写你的 GitHub ID>
+个人参赛（队长 1 人，无队友）。GitHub ID：FFTopOne

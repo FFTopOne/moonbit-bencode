@@ -9,7 +9,7 @@
 //   "moonbitlang/x@0.4.6",
 // }
 
-name = "your-github-id/moonbit-bencode"
+name = "FFTopOne/moonbit-bencode"
 
 version = "0.1.0"
 

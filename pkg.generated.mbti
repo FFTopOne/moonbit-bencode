@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "your-github-id/moonbit-bencode"
+package "FFTopOne/moonbit-bencode"
 
 import {
   "moonbitlang/core/buffer",

@@ -1,4 +1,4 @@
 import {
   "moonbitlang/x/fs",
-  "your-github-id/moonbit-bencode" @lib,
+  "FFTopOne/moonbit-bencode" @lib,
 }
