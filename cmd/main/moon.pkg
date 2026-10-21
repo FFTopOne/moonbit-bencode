@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/x/sys",
+  "your-github-id/moonbit-bencode/cli" @cli,
+}
+
+pkgtype(kind: "executable")
