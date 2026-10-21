@@ -17,6 +17,20 @@ DHT 协议都使用它。MoonBit 生态中此前没有任何 bencode 实现，�
 字节序排列、字符串按字节计长且不保证是 UTF-8。手写解析器容易在这些细节上出错，而错误
 的数据层会让上层工具难以调试。本库把规范细节收敛到一处，并提供带字节偏移的错误定位。
 
+## 与现有生态的关系（原创性说明）
+
+申报时已核查（2026-10-21）：MoonBit 官方注册表（mooncakes.io）中**没有任何 bencode
+实现**，官方组织（moonbitlang）下也无相关仓库。本项目为原创工作，不是任何现有项目的
+分支、移植或扩展。与相邻格式及项目的关系如下——它们均不能替代 bencode：
+
+- **与 JSON / JSON5**（`moonbitlang/core` 内置 JSON、`moonbitlang/x/json5`）：JSON 是
+  文本格式，而 `.torrent` 文件按 BEP 3 规定必须使用 bencode，Tracker 与 DHT 流量同样
+  只识别 bencode；且 bencode 的字典键排序、二进制安全等规则与 JSON 不同，无法互换。
+- **与 CBOR**（`mizchi/cbor`）：CBOR（RFC 8949）是另一种二进制格式，但 BitTorrent 生态
+  不识别 CBOR；两者服务不同协议，互不覆盖。
+- **与 BitTorrent 客户端库**（`Novanke/swarmcrate`）：该类项目位于协议层，本库位于数据
+  层，是互补关系——客户端若要做种子解析，正需要这样一个编解码器作为依赖。
+
 ## 功能清单（均已实现并通过测试）
 
 1. **严格解码器**：拒绝 `i03e`、`i-0e`、`i-e`、`05:` 等非规范输入；截断载荷、字典非
@@ -45,7 +59,7 @@ DHT 协议都使用它。MoonBit 生态中此前没有任何 bencode 实现，�
    渲染与相等性边界。
 - README 中的示例由 `moon test` 作为 doctest 真实执行。
 - `moon check` 零警告；`moon fmt` / `moon info` 规范提交。
-- 开发记录：7 个语义化提交，从骨架到测试逐步可追踪。
+- 开发记录：10 个语义化提交，从骨架到测试逐步可追踪。
 
 ## 交付计划
 
