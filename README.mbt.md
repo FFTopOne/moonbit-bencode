@@ -171,8 +171,8 @@ moon run cmd/main --target native -- roundtrip file.torrent
 ## Development
 
 ```sh
-moon test             # 49 tests: spec vectors, malformed input, streams, property
-moon test README.mbt.md  # run the examples in this README (4 doctests)
+moon test             # 55 tests: spec vectors, malformed input, streams, property
+moon test README.mbt.md  # run just the README examples (5 doctests)
 moon fmt && moon info
 ```
 
