@@ -39,6 +39,8 @@ MoonBit 官方注册表（mooncakes.io）与 moonbitlang 官方仓库中目前�
 - **增量流式解码**：分块输入，值完整即产出，缓冲区超 4096 字节自动压缩；
 - **对抗输入防护**：容器嵌套上限 512 层，恶意 `llll…` 载荷返回 `NestingTooDeep` 而非栈溢出；
 - **值访问 API**：`as_int` / `as_str` / `as_list` / `as_dict`、`get`、`get_path` 嵌套查找；
+- **Tracker 响应类型**：`AnnounceResponse::parse` 解析 interval / complete / incomplete /
+  failure reason 与 peers（紧凑 IPv4、紧凑 IPv6、字典列表三种形态）；
 - **CLI**：`decode` / `check` / `canon` / `roundtrip` 四个子命令。
 
 ## 6. 项目类型
@@ -61,4 +63,4 @@ https://github.com/FFTopOne/moonbit-bencode （公开，默认分支 `main`，Ap
 - **有效提交 20+ 个**（要求 ≥10），无空提交、无重复提交、无无意义拆分；每个提交是一次独立可
   验证的改动：骨架 → 类型 → 解码器 → 编码器 → 测试 → CLI → 文档 → 嵌套防护 → CI → DHT 示例。
 - 另有 5 个 Issue（4 开放、1 关闭）与 1 个已合并 PR（经 CI 校验），协作记录可追溯。
-- GitHub Actions 每次推送执行格式检查、零警告类型检查、55 个测试与文档测试，当前全绿。
+- GitHub Actions 每次推送执行格式检查、零警告类型检查、全部测试与文档测试，当前全绿。

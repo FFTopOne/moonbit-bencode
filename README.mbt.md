@@ -200,10 +200,29 @@ moon run cmd/main --target native -- roundtrip file.torrent
 ## Development
 
 ```sh
-moon test             # 55 tests: spec vectors, malformed input, streams, property
-moon test README.mbt.md  # run just the README examples (5 doctests)
+moon test             # 66 tests: spec vectors, malformed input, streams, property
+moon test README.mbt.md  # run just the README examples (6 doctests)
 moon fmt && moon info
+moon bench --release  # throughput numbers for decode/encode/streaming
 ```
+
+## Benchmarks
+
+`moon bench --release`, release build on one Windows x86_64 machine — treat as
+ballpark, not a promise. Payload: a metainfo dictionary whose `pieces` field is
+20 KiB (1000 × 20-byte hashes), i.e. a realistic torrent.
+
+| Benchmark | Mean |
+| --- | --- |
+| decode metainfo | 2.50 µs |
+| encode metainfo | 2.79 µs |
+| roundtrip (decode then encode) | 5.42 µs |
+| streaming decode, 1 KiB chunks | 33.7 µs |
+
+Streaming is slower than one-shot decoding because every `try_next` retries the
+parse from the last value boundary, so the cost grows with the number of
+chunks. For DHT-sized messages (a few hundred bytes) that difference is noise;
+for a whole file, use the one-shot `decode`.
 
 ## References
 
