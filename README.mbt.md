@@ -130,6 +130,33 @@ The same decoder handles several messages arriving in one datagram: call
 `pending()` tells you whether the buffer is empty — at a clean message
 boundary it is zero.
 
+### Tracker announce responses
+
+`AnnounceResponse::parse` turns a decoded response into typed fields and
+handles both peer encodings — the compact BEP 23 form and the older list of
+dictionaries:
+
+```mbt check
+///|
+test {
+  let wire = @moonbit-bencode.Value::dict_of([
+    (b"interval", @moonbit-bencode.Value::int(1800L)),
+    (b"complete", @moonbit-bencode.Value::int(12L)),
+    // 127.0.0.1:6881 in compact form: four address bytes, then the port.
+    (b"peers", @moonbit-bencode.Value::str(b"\x7f\x00\x00\x01\x1a\xe1")),
+  ])
+  let response = @moonbit-bencode.AnnounceResponse::parse(wire)
+  assert_eq(response.interval(), Some(1800L))
+  assert_eq(response.complete(), Some(12L))
+  let peers = response.peers()
+  assert_eq(peers.length(), 1)
+  assert_eq(peers[0].ip_string(), "127.0.0.1")
+  assert_eq(peers[0].port(), (6881 : UInt16))
+  // The raw address stays binary: four bytes, never text.
+  assert_eq(peers[0].ip().length(), 4)
+}
+```
+
 Errors carry the offending byte offset:
 
 ```mbt check
@@ -166,7 +193,9 @@ moon run cmd/main --target native -- roundtrip file.torrent
 | `Value::{as_int, as_str, as_list, as_dict}` | typed accessors |
 | `Value::get(key)` / `Value::get_path(keys)` | dictionary lookup |
 | `StreamDecoder::{feed, try_next, pending, clear}` | incremental decoding |
-| `DecodeError` | `suberror` with byte offsets |
+| `AnnounceResponse::parse(value)` | typed tracker response |
+| `Peer::{ip, port, ip_string}` | peer address, binary first |
+| `DecodeError` / `TrackerError` | `suberror`s with byte offsets |
 
 ## Development
 

@@ -30,7 +30,43 @@ pub fn DecodeError::output(Self, &Logger) -> Unit
 pub fn DecodeError::to_string(Self) -> String
 pub impl Show for DecodeError
 
+pub suberror TrackerError {
+  NotADictionary
+  MalformedCompactPeers(Int32)
+  MalformedCompactPeers6(Int32)
+}
+pub fn TrackerError::output(Self, &Logger) -> Unit
+pub fn TrackerError::to_string(Self) -> String
+pub impl Show for TrackerError
+
 // Types and methods
+pub struct AnnounceResponse {
+  interval : Int64?
+  min_interval : Int64?
+  complete : Int64?
+  incomplete : Int64?
+  failure_reason : Bytes?
+  warning_message : Bytes?
+  peers : Array[Peer]
+}
+pub fn AnnounceResponse::complete(Self) -> Int64?
+pub fn AnnounceResponse::failure_reason(Self) -> Bytes?
+pub fn AnnounceResponse::incomplete(Self) -> Int64?
+pub fn AnnounceResponse::interval(Self) -> Int64?
+pub fn AnnounceResponse::min_interval(Self) -> Int64?
+pub fn AnnounceResponse::parse(Value) -> Self raise TrackerError
+pub fn AnnounceResponse::peers(Self) -> Array[Peer]
+pub fn AnnounceResponse::warning_message(Self) -> Bytes?
+
+pub struct Peer {
+  ip : Bytes
+  port : UInt16
+}
+pub fn Peer::Peer(Bytes, UInt16) -> Self
+pub fn Peer::ip(Self) -> Bytes
+pub fn Peer::ip_string(Self) -> String
+pub fn Peer::port(Self) -> UInt16
+
 pub struct StreamDecoder {
   mut buf : @buffer.Buffer
   mut consumed : Int32
