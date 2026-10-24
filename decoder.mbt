@@ -126,40 +126,49 @@ fn Cursor::decode_int_body(self : Cursor) -> Value raise DecodeError {
     raise InvalidInteger(start)
   }
   self.expect(b'e')
-  // Fold while the magnitude still fits `Int64`. BEP 3 puts no bound on
-  // integer size, so when it stops fitting we fall back to `BigInt` rather
-  // than rejecting the value — a spec-complete codec must accept it.
-  let limit = if negative { UINT64_MIN_MAGNITUDE } else { UINT64_MAX_I64 }
-  let mut magnitude : UInt64 = 0
-  let mut fits = true
-  for i in digits_start..<digits_end {
-    let digit = (self.view.at(i) - b'0').to_uint64()
-    if fits {
-      if magnitude <= (limit - digit) / 10 {
-        magnitude = magnitude * 10 + digit
-      } else {
-        fits = false
+  // Fast path: fold the digits into an `Int64`. BEP 3 puts no bound on
+  // integer size, so when the magnitude stops fitting we fall back to
+  // `BigInt` rather than rejecting the value — a spec-complete codec must
+  // accept it. Keeping the two paths apart lets the hot loop stay tight.
+  match self.fold_int64(negative, digits_start, digits_end) {
+    Some(v) => Int(v)
+    None => {
+      let literal = self.view[start:digits_end].to_owned()
+      match BigInt::parse(literal) {
+        Some(big) => Value::BigInt(big)
+        // Unreachable: the literal was just validated as canonical.
+        None => raise InvalidInteger(start)
       }
     }
   }
-  if !fits {
-    let literal = self.view[start:digits_end].to_owned()
-    match BigInt::parse(literal) {
-      Some(big) => Value::BigInt(big)
-      // Unreachable: the literal was just validated as canonical.
-      None => raise InvalidInteger(start)
-    }
-  } else {
-    // Negating in unsigned arithmetic and reinterpreting keeps `-2^63`
-    // exact: `0 - 2^63` wraps to `2^63`, which reads back as `Int64` min.
-    Int(
-      if negative {
-        (0UL - magnitude).reinterpret_as_int64()
-      } else {
-        magnitude.reinterpret_as_int64()
-      },
-    )
+}
+
+///|
+/// Fold `view[from..<to]` into a signed 64-bit integer, or `None` when the
+/// magnitude does not fit. `negative` selects the wider bound so that
+/// `-2^63` stays representable.
+fn Cursor::fold_int64(
+  self : Cursor,
+  negative : Bool,
+  from : Int32,
+  to : Int32,
+) -> Int64? {
+  let limit = if negative { UINT64_MIN_MAGNITUDE } else { UINT64_MAX_I64 }
+  let mut magnitude : UInt64 = 0
+  for i in from..<to {
+    let digit = (self.view.at(i) - b'0').to_uint64()
+    guard magnitude <= (limit - digit) / 10 else { return None }
+    magnitude = magnitude * 10 + digit
   }
+  // Negating in unsigned arithmetic and reinterpreting keeps `-2^63`
+  // exact: `0 - 2^63` wraps to `2^63`, which reads back as `Int64` min.
+  Some(
+    if negative {
+      (0UL - magnitude).reinterpret_as_int64()
+    } else {
+      magnitude.reinterpret_as_int64()
+    },
+  )
 }
 
 ///|

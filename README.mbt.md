@@ -241,10 +241,15 @@ ballpark, not a promise. Payload: a metainfo dictionary whose `pieces` field is
 
 | Benchmark | Mean |
 | --- | --- |
-| decode metainfo | 2.50 µs |
-| encode metainfo | 2.79 µs |
-| roundtrip (decode then encode) | 5.42 µs |
-| streaming decode, 1 KiB chunks | 33.7 µs |
+| decode metainfo | 3.19 µs |
+| encode metainfo | 2.82 µs |
+| roundtrip (decode then encode) | 5.67 µs |
+| streaming decode, 1 KiB chunks | 36.6 µs |
+
+Supporting unbounded integers cost about 25 % on decode: `Value` gained a
+fifth variant, so the enum got larger and every value move pays for it.
+That is the price of not rejecting data the format allows, and it is
+recorded here rather than hidden — see issue #8.
 
 Streaming is slower than one-shot decoding because every `try_next` retries the
 parse from the last value boundary, so the cost grows with the number of

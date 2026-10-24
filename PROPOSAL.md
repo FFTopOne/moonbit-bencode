@@ -57,7 +57,7 @@ MoonBit 生态已有 `moon_bencode`（mooncakes：`2515050243qyf/moon_bencode`�
   peers 编码）；
 - 提供 CLI：`decode` / `check` / `canon` / `roundtrip` 四个子命令；
 - 提供 70+ 个 MoonBit 测试（规范向量、畸形输入逐项断言、流式逐字节喂入、800 组随机字节「不
-  panic」、300 组随机值往返含大整数）与 `moon bench --release` 基准（decode 2.5 µs / encode
+  panic」、300 组随机值往返含大整数）与 `moon bench --release` 基准（decode 3.2 µs / encode
   2.8 µs）；
 - README 示例全部由 doctest 真实执行；GitHub Actions 每次推送执行格式检查、零警告类型检查、
   全部测试与文档测试。
