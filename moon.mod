@@ -31,7 +31,7 @@ keywords = [
 
 preferred_target = "wasm"
 
-description = "A spec-complete bencode (BEP 3) codec for MoonBit: strict decoder with byte offsets, canonical encoder, and an incremental stream decoder."
+description = "A spec-complete bencode (BEP 3) codec for MoonBit: unbounded integers, strict decoder with byte offsets, canonical encoder, and an incremental stream decoder."
 
 import {
   "moonbitlang/x@0.5.6",
