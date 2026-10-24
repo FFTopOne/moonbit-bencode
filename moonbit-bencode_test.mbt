@@ -210,16 +210,25 @@ test "non-canonical integers are rejected" {
 }
 
 ///|
-test "integer overflow" {
-  expect_error(b"i9223372036854775808e", fn(e) raise {
-    assert_true(e is IntegerOverflow(1))
-  })
-  expect_error(b"i-9223372036854775809e", fn(e) raise {
-    assert_true(e is IntegerOverflow(1))
-  })
-  expect_error(b"i99999999999999999999999e", fn(e) raise {
-    assert_true(e is IntegerOverflow(1))
-  })
+test "integers beyond Int64 decode instead of being rejected" {
+  // BEP 3 puts no bound on integer size, so these must survive the round
+  // trip rather than raising an error.
+  let cases : Array[(Bytes, String)] = [
+    (b"i9223372036854775808e", "9223372036854775808"),
+    (b"i-9223372036854775809e", "-9223372036854775809"),
+    (b"i99999999999999999999999e", "99999999999999999999999"),
+    (
+      b"i-170141183460469231731687303715884105728e", "-170141183460469231731687303715884105728",
+    ),
+  ]
+  for (input, expected) in cases {
+    let value = must_decode(input)
+    assert_eq(value.to_string(), expected)
+    assert_eq(@moonbit-bencode.encode(value), input)
+    // The value is a BigInt, not an Int64.
+    assert_true(value.as_bigint() is Some(_))
+    assert_true(value.as_int() is None)
+  }
 }
 
 ///|
@@ -444,13 +453,32 @@ fn random_value(
   let s1 = next_random(state)
   let kind = s1 % 4
   if depth >= 3 || kind == 0 {
-    // Leaf: integer or byte string.
+    // Leaf: a small integer, a byte string, or a big integer of 1..=40
+    // digits — the third kind is what exercises the unbounded path.
     let s2 = next_random(s1)
-    if s2 % 2 == 0 {
-      let n = (s2 / 2 % 2001).reinterpret_as_int64() - 1000L
+    let leaf = s2 % 3
+    if leaf == 0 {
+      let n = (s2 / 3 % 2001).reinterpret_as_int64() - 1000L
       (@moonbit-bencode.Value::int(n), s2)
+    } else if leaf == 1 {
+      let s3 = next_random(s2)
+      let ndigits = (s3 / 2 % 40).to_int() + 1
+      let text : Array[Byte] = []
+      if s3 % 5 == 0 {
+        text.push(b'-')
+      }
+      let mut s = s3
+      for _ in 0..<ndigits {
+        s = next_random(s)
+        text.push(b'0' + (s % 10).to_byte())
+      }
+      let literal = Bytes::from_array(text[:])
+      match @moonbit-bencode.BigInt::parse(literal) {
+        Some(big) => (@moonbit-bencode.Value::big_int(big), s)
+        None => (@moonbit-bencode.Value::int(0L), s)
+      }
     } else {
-      let len = (s2 / 2 % 9).to_int()
+      let len = (s2 / 3 % 9).to_int()
       let (bytes, s3) = random_bytes(s2, len)
       (@moonbit-bencode.Value::str(bytes), s3)
     }
@@ -530,9 +558,6 @@ test "every decode error renders with its offset" {
     (b"x", "unexpected byte 0x78 at byte 0"),
     (b"ie", "malformed integer literal at byte 1"),
     (b"04:spam", "malformed byte-string length at byte 0"),
-    (
-      b"i99999999999999999999999e", "integer at byte 1 overflows the signed 64-bit range",
-    ),
     (b"di1e1:ae", "dictionary key at byte 1 is not a byte string"),
     (
       b"l".repeat(513) + b"e".repeat(513),

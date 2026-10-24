@@ -180,7 +180,7 @@ pub fn AnnounceResponse::parse(
 ///|
 fn int_field(value : Value, key : Bytes) -> Int64? {
   match value.get(key) {
-    Some(v) => v.as_int()
+    Some(v) => v.as_integer().bind(fn(b) { b.to_int64() })
     None => None
   }
 }

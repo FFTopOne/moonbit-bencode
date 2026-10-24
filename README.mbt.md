@@ -20,8 +20,11 @@ The library depends on nothing but `moonbitlang/core`.
   UTF-8.
 - **Streaming.** `StreamDecoder` decodes values incrementally from chunks —
   what network protocols need.
-- **Full 64-bit integers.** Bencoded integers are decoded into `Int64` with
-  overflow detection (`-2^63 ..= 2^63-1`).
+- **Unbounded integers.** BEP 3 puts no limit on integer size, so nothing is
+  rejected: values that fit decode into `Int64` (the cheap path) and larger
+  ones into `BigInt`, a normalised sign-plus-decimal-digits representation
+  that round-trips exactly. `Value::int(5) == Value::big_int(...)` compares
+  by value.
 - **Hardened against hostile input.** Container nesting is capped at 512
   levels, so an adversarial `llll...` payload yields `NestingTooDeep` instead
   of a stack overflow; fuzz-style tests assert that arbitrary bytes always end
@@ -130,6 +133,28 @@ The same decoder handles several messages arriving in one datagram: call
 `pending()` tells you whether the buffer is empty — at a clean message
 boundary it is zero.
 
+### Integers without a width limit
+
+BEP 3 does not bound integer size, so neither does the decoder: anything that
+fits stays in `Int64`, and larger magnitudes become `BigInt` instead of an
+error. Reading back is a choice, not a guess.
+
+```mbt check
+///|
+test {
+  // 2^64 + 1 does not fit in 64 bits.
+  let value = @moonbit-bencode.decode(b"i18446744073709551617e")
+  assert_true(value.as_int() is None)
+  let big = value.as_bigint().unwrap()
+  assert_eq(big.to_string(), "18446744073709551617")
+  // Encoding writes the same literal back.
+  assert_eq(@moonbit-bencode.encode(value), b"i18446744073709551617e")
+  // A value that happens to fit can still be read as an Int64.
+  let small = @moonbit-bencode.decode(b"i42e")
+  assert_eq(small.as_integer().unwrap().to_int64(), Some(42L))
+}
+```
+
 ### Tracker announce responses
 
 `AnnounceResponse::parse` turns a decoded response into typed fields and
@@ -195,13 +220,15 @@ moon run cmd/main --target native -- roundtrip file.torrent
 | `StreamDecoder::{feed, try_next, pending, clear}` | incremental decoding |
 | `AnnounceResponse::parse(value)` | typed tracker response |
 | `Peer::{ip, port, ip_string}` | peer address, binary first |
+| `BigInt::{parse, to_int64, from_int64}` | arbitrary-precision integers |
+| `Value::{as_int, as_integer, as_bigint}` | integer accessors |
 | `DecodeError` / `TrackerError` | `suberror`s with byte offsets |
 
 ## Development
 
 ```sh
-moon test             # 66 tests: spec vectors, malformed input, streams, property
-moon test README.mbt.md  # run just the README examples (6 doctests)
+moon test             # 75 tests: spec vectors, malformed input, streams, property
+moon test README.mbt.md  # run just the README examples (7 doctests)
 moon fmt && moon info
 moon bench --release  # throughput numbers for decode/encode/streaming
 ```

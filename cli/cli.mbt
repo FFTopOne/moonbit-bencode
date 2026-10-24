@@ -153,7 +153,7 @@ fn cmd_roundtrip(args : ArrayView[String]) -> Int32 {
 ///|
 /// Name of the top-level variant, for `check` output.
 pub fn type_name(value : @lib.Value) -> String {
-  if value.as_int() is Some(_) {
+  if value.as_int() is Some(_) || value.as_bigint() is Some(_) {
     "integer"
   } else if value.as_str() is Some(_) {
     "byte string"

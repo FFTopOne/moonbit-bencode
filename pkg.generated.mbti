@@ -21,7 +21,6 @@ pub suberror DecodeError {
   UnexpectedByte(Byte, Int32)
   InvalidInteger(Int32)
   InvalidLength(Int32)
-  IntegerOverflow(Int32)
   InvalidDictKey(Int32)
   NestingTooDeep(Int32)
   TrailingData(Int32)
@@ -58,6 +57,24 @@ pub fn AnnounceResponse::parse(Value) -> Self raise TrackerError
 pub fn AnnounceResponse::peers(Self) -> Array[Peer]
 pub fn AnnounceResponse::warning_message(Self) -> Bytes?
 
+pub struct BigInt {
+  negative : Bool
+  digits : Array[Byte]
+}
+pub fn BigInt::BigInt(Bool, Array[Byte]) -> Self
+pub fn BigInt::digits(Self) -> Array[Byte]
+pub fn BigInt::equal(Self, Self) -> Bool
+pub fn BigInt::from_int64(Int64) -> Self
+pub fn BigInt::is_negative(Self) -> Bool
+pub fn BigInt::make(Bool, Array[Byte]) -> Self?
+pub fn BigInt::not_equal(Self, Self) -> Bool
+pub fn BigInt::output(Self, &Logger) -> Unit
+pub fn BigInt::parse(Bytes) -> Self?
+pub fn BigInt::to_int64(Self) -> Int64?
+pub fn BigInt::to_string(Self) -> String
+pub impl Eq for BigInt
+pub impl Show for BigInt
+
 pub struct Peer {
   ip : Bytes
   port : UInt16
@@ -79,14 +96,18 @@ pub fn StreamDecoder::try_next(Self) -> Value? raise DecodeError
 
 pub enum Value {
   Int(Int64)
+  BigInt(BigInt)
   Str(Bytes)
   List(Array[Value])
   Dict(Map[Bytes, Value])
 }
+pub fn Value::as_bigint(Self) -> BigInt?
 pub fn Value::as_dict(Self) -> Map[Bytes, Self]?
 pub fn Value::as_int(Self) -> Int64?
+pub fn Value::as_integer(Self) -> BigInt?
 pub fn Value::as_list(Self) -> Array[Self]?
 pub fn Value::as_str(Self) -> Bytes?
+pub fn Value::big_int(BigInt) -> Self
 pub fn Value::dict() -> Self
 pub fn Value::dict_of(Array[(Bytes, Self)]) -> Self
 pub fn Value::equal(Self, Self) -> Bool

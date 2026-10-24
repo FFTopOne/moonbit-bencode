@@ -13,6 +13,9 @@
 /// Values are compared structurally with `==`.
 pub enum Value {
   Int(Int64)
+  /// An integer literal that does not fit in `Int64`. BEP 3 puts no bound on
+  /// integer size, so these are represented instead of rejected.
+  BigInt(BigInt)
   Str(Bytes)
   List(Array[Value])
   Dict(Map[Bytes, Value])
@@ -22,6 +25,12 @@ pub enum Value {
 /// Build an integer value.
 pub fn Value::int(v : Int64) -> Value {
   Int(v)
+}
+
+///|
+/// Build an arbitrary-precision integer value.
+pub fn Value::big_int(v : BigInt) -> Value {
+  BigInt(v)
 }
 
 ///|
@@ -54,6 +63,26 @@ pub fn Value::dict_of(pairs : Array[(Bytes, Value)]) -> Value {
 pub fn Value::as_int(self : Value) -> Int64? {
   match self {
     Int(v) => Some(v)
+    _ => None
+  }
+}
+
+///|
+/// Return the arbitrary-precision payload, or `None` for the other variants.
+pub fn Value::as_bigint(self : Value) -> BigInt? {
+  match self {
+    BigInt(v) => Some(v)
+    _ => None
+  }
+}
+
+///|
+/// Return the integer payload of either representation: `Int` directly, and
+/// `BigInt` when it happens to fit in 64 bits.
+pub fn Value::as_integer(self : Value) -> BigInt? {
+  match self {
+    Int(v) => Some(BigInt::from_int64(v))
+    BigInt(v) => Some(v)
     _ => None
   }
 }
@@ -116,6 +145,9 @@ pub fn Value::get_path(self : Value, keys : Array[Bytes]) -> Value? {
 pub impl Eq for Value with fn equal(self, other) {
   match (self, other) {
     (Int(a), Int(b)) => a == b
+    (Int(a), BigInt(b)) => BigInt::from_int64(a) == b
+    (BigInt(a), Int(b)) => a == BigInt::from_int64(b)
+    (BigInt(a), BigInt(b)) => a == b
     (Str(a), Str(b)) => a == b
     (List(a), List(b)) => array_equal(a, b)
     (Dict(a), Dict(b)) => map_equal(a, b)
@@ -175,6 +207,7 @@ pub extend Value with Show::{output, to_string}
 pub impl Debug for Value with fn to_repr(self) {
   match self {
     Int(v) => Repr::ctor("Int", [(None, Repr::integer(v.to_string()))])
+    BigInt(v) => Repr::ctor("BigInt", [(None, Repr::integer(v.to_string()))])
     Str(s) => Repr::ctor("Str", [(None, Repr::literal(quote_bytes(s)))])
     List(items) => {
       let children : Array[Repr] = []
@@ -200,6 +233,7 @@ pub extend Value with Debug::{to_repr}
 fn Value::write_compact(self : Value, logger : &Logger) -> Unit {
   match self {
     Int(v) => logger.write_string(v.to_string())
+    BigInt(v) => logger.write_string(v.to_string())
     Str(s) => logger.write_string(quote_bytes(s))
     List(items) => {
       logger.write_char('[')

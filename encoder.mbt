@@ -11,6 +11,16 @@ pub fn encode_into(buf : Buffer, value : Value) -> Unit {
       buf.write_string_utf8(n.to_string())
       buf.write_byte(b'e')
     }
+    BigInt(n) => {
+      buf.write_byte(b'i')
+      if n.is_negative() {
+        buf.write_byte(b'-')
+      }
+      for d in n.digits() {
+        buf.write_byte(d)
+      }
+      buf.write_byte(b'e')
+    }
     Str(s) => {
       buf.write_string_utf8(s.length().to_string())
       buf.write_byte(b':')
