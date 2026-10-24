@@ -8,6 +8,22 @@ for [MoonBit](https://www.moonbitlang.com) — the encoding behind BitTorrent
 
 The library depends on nothing but `moonbitlang/core`.
 
+### How this relates to `moon_bencode`
+
+The MoonBit ecosystem already has
+[`moon_bencode`](https://gitlink.org.cn/qyf795201/moon-bencode), which covers
+encoding/decoding, torrent metainfo, magnet links and info hashes. This
+library is a **complement, not a replacement** — it covers the parts of BEP 3
+that one leaves open, and deliberately does not duplicate the rest:
+
+| | `moon_bencode` | this library |
+| --- | --- | --- |
+| integers beyond `Int64` | rejected | `BigInt`, lossless round trip |
+| incremental decoding | — | `StreamDecoder` for length-unprefixed streams |
+| error reporting | — | every error carries its byte offset |
+| hostile input | — | 512-level nesting cap instead of a stack overflow |
+| zero-copy views, JSON, magnet links, info hash | yes | out of scope here |
+
 ## Features
 
 - **Strict decoding.** Malformed integers (`i03e`, `i-0e`, `i-e`), bad length
